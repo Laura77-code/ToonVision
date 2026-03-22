@@ -4,6 +4,111 @@ ToonVision is a computer vision project built with OpenCV that converts ordinary
 
 ---
 
+## **Technical Breakdown: How Parameters Affect the Image**
+
+To achieve these different styles, the algorithm manipulates four key stages of the Computer Vision pipeline:
+
+### **1. Mathematical Intuition: Contrast & Brightness**
+The core of image transformation can be expressed as:
+**$g(x,y) = \alpha \cdot f(x,y) + \beta$**
+
+- **$\alpha$ (Gain/Contrast)**: Multiplies the pixel values. $\alpha > 1$ increases contrast, making edges easier for the `adaptiveThreshold` to find.
+- **$\beta$ (Bias/Brightness)**: Adds a constant value. In our code, the `--adaptive-c` parameter acts as a bias that shifts the threshold, helping to clean noise in dark areas.
+
+```text
+Contrast (α) Effect:           Brightness (β) Shift:
+      ^                              ^
+      |     / (α > 1)                |    / (Original)
+      |    /                         |   /  
+      |   / (Original)               |  /--- (Shifted β)
+      +-----------> Source           +-----------> Source
+```
+
+### **2. Pre-processing (Noise Reduction)**
+- **`--median-ksize`**: This uses a **Median Filter**. It is the first line of defense against "salt-and-pepper" noise.
+  - *Small (3-5)*: Keeps fine details but might leave some noise.
+  - *Large (7+)*: Aggressively cleans the image, which is essential for low-light photos (Kitten).
+
+### **3. Edge Extraction (Adaptive Thresholding)**
+- **`--adaptive-block-size`**: Determines the neighborhood area for the threshold.
+  - *Small (3-5)*: Captures micro-details like whiskers.
+  - *Large (11+)*: Creates bolder, thicker outlines.
+- **`--adaptive-c`**: Acts as the $\beta$ bias in our thresholding math.
+
+### **4. Pipeline Logic Flow**
+```text
+[ Input Image ] 
+      |
+      v
+[ Grayscale + Median Blur ]  <-- Removes noise (Step 1)
+      |
+      v
+[ Adaptive Thresholding ]    <-- Creates Edge Mask (Step 2)
+      |
+      +--------------------------+
+      |                          |
+      v                          v
+[ Bilateral Filter ]       [ Color Quantization ] <-- Smooths & Simplifies (Step 3 & 4)
+      |                          |
+      +------------+-------------+
+                   |
+                   v
+        [ Bitwise AND Masking ]    <-- Combines Edges + Colors
+                   |
+                   v
+           [ Final Cartoon ]
+```
+
+---
+
+## **Style Recipes & Commands**
+
+To reproduce the results shown above, you can use the following "recipes" by adjusting the command-line parameters.
+
+### **1. Default Style**
+*Balanced settings for standard photos.*
+```bash
+python cartoon_stylizer.py Inputs/ --output-dir outputs_default
+```
+
+### **2. Bold Comic Style**
+*Thick outlines and flat, vibrant colors (Great for Harry Potter/Superman).*
+```bash
+python cartoon_stylizer.py Inputs/ \
+  --output-dir outputs_bold_comic \
+  --adaptive-block-size 11 \
+  --adaptive-c 7 \
+  --bilateral-sigma-color 220 \
+  --color-levels 6
+```
+
+### **3. Ultra-Sensitive Style**
+*Forces edge detection on dark or low-contrast images (Used for the Kitten).*
+```bash
+python cartoon_stylizer.py Inputs/ \
+  --output-dir outputs_ultra_sensitive \
+  --median-ksize 3 \
+  --adaptive-block-size 3 \
+  --adaptive-c -1 \
+  --bilateral-d 15 \
+  --bilateral-sigma-color 150 \
+  --color-levels 12
+```
+
+### **4. Painterly Smooth (Masterpiece)**
+*Aggressive noise reduction for an artistic, hand-painted look (Best for noisy photos).*
+```bash
+python cartoon_stylizer.py Inputs/ \
+  --output-dir outputs_painterly_smooth \
+  --median-ksize 7 \
+  --adaptive-block-size 9 \
+  --adaptive-c 1 \
+  --bilateral-sigma-color 300 \
+  --color-levels 7
+```
+
+---
+
 ## Repository name suggestion
 
 **ToonVision**
@@ -147,188 +252,9 @@ It is important to note that **there is no "one-size-fits-all" command**. A conf
 
 | Subject | Default (Ideal) | Painterly Smooth (Over-smoothed) |
 | :--- | :--- | :--- |
-| **Harry Potter** | ![Default](outputs_default/harry_comparison.png) | ![Masterpiece](outputs_bold_comic/harry_comparison.png) |
+| **Harry Potter** | ![Default](outputs_default/harry_comparison.png) | ![Masterpiece](outputs_painterly_smooth/harry_comparison.png) |
 | **Analysis** | Sharp edges, clear facial details, and balanced colors. | **Issue**: The high `median-ksize (7)` and `bilateral-sigma (300)` blur out the fine details of the face and wand. |
 
 - **Conclusion**: Classical Computer Vision requires parameter tuning based on the specific characteristics (lighting, noise, detail) of the input image. Low-light photos (Kitten) need heavy smoothing, while high-quality portraits (Harry) need sharper edge detection.
 
 ---
-
-The slides require two kinds of demo examples in `README.md`:
-
-1. An image where the cartoon feeling is expressed well.
-2. An image where the cartoon feeling is **not** expressed well.
-3. A discussion of the limitations of the algorithm. fileciteturn0file0
-
-Below is a ready-to-use structure you can keep in your GitHub README.
-
-### Demo 1 — Image where the algorithm works well
-
-**Recommended image type:**
-- clear object boundaries
-- simple background
-- good lighting
-- saturated colors
-- portraits, toys, anime figures, cars, or objects with strong outlines
-
-**Why it works well:**
-- the edge detector can find clean boundaries
-- the bilateral filter preserves major contours
-- color quantization creates flatter, cartoon-like color regions
-
-**Add your screenshots here:**
-
-```markdown
-### Good Example
-
-Original image and result:
-
-![Good comparison](outputs/good_case_comparison.png)
-
-Observation:
-The cartoon effect is clear because the subject has strong edges, simple lighting,
-and color regions that can be simplified without losing the main shape.
-```
-
-### Demo 2 — Image where the algorithm does not work well
-
-**Recommended difficult image type:**
-- cluttered background
-- very fine textures (grass, hair, leaves, fabric)
-- low contrast
-- noisy or blurry photo
-- shadows covering the subject
-
-**Why it fails more easily:**
-- too many small edges are detected
-- detailed textures can become noisy black lines
-- subtle gradients may be turned into harsh flat regions
-- the result may look messy instead of cleanly cartoon-like
-
-**Add your screenshots here:**
-
-```markdown
-### Bad Example
-
-Original image and result:
-
-![Bad comparison](outputs/bad_case_comparison.png)
-
-Observation:
-The cartoon effect is weaker because the image contains many textures and background details.
-Instead of simplifying the scene nicely, the algorithm keeps too many unwanted edges.
-```
-
----
-
-## Limitations of this algorithm
-
-This section is explicitly required by the homework slides. fileciteturn0file0
-
-You can use the following discussion directly in your README:
-
-### Limitations
-
-1. **Texture-heavy scenes are difficult**  
-   The algorithm works best on images with clear object boundaries. Images with hair, grass, trees, fabric patterns, or crowded backgrounds often produce too many edge lines.
-
-2. **Lighting conditions matter**  
-   Strong shadows or low-contrast images can lead to broken or inaccurate edges.
-
-3. **Limited artistic control**  
-   This is a classical image processing pipeline, not a learned style-transfer model. It produces a simple cartoon effect, but it cannot imitate a specific anime, comic, or painterly style.
-
-4. **Flat regions may lose detail**  
-   Color quantization simplifies the image, but sometimes important details are also removed.
-
-5. **Parameter sensitivity**  
-   The output quality depends on parameter choices such as threshold block size, bilateral filter strength, and number of color levels.
-
-6. **Not semantically aware**  
-   The algorithm does not understand objects. It only processes pixels and edges, so it cannot selectively enhance faces, eyes, or important regions the way a more advanced AI model could.
-
----
-
-## Key functions
-
-### `cartoonize_image(...)`
-Performs the complete cartoon rendering pipeline.
-
-### `make_comparison_canvas(...)`
-Creates a single comparison image with:
-- Original
-- Color Simplified
-- Detected Edges
-- Final Cartoon
-
-This is useful for the README screenshot requirement mentioned in the slides. fileciteturn0file0
-
----
-
-## Suggested images for submission
-
-To maximize your score, use:
-
-### Good case
-- action figure
-- portrait with plain background
-- toy car
-- colorful building with strong edges
-- food photo with clear boundaries
-
-### Bad case
-- tree leaves
-- crowded street
-- group photo with complex background
-- animal fur close-up
-- low-light indoor scene
-
----
-
-## GitHub submission checklist
-
-Based on the slides, before submitting make sure you have all of the following: fileciteturn0file0
-
-- [ ] New GitHub repository created
-- [ ] Specific repository name, not a generic homework name
-- [ ] Repository description added
-- [ ] `README.md` included
-- [ ] Program explanation included
-- [ ] Feature explanation included
-- [ ] Screenshot or video included in the repository
-- [ ] Good demo example included
-- [ ] Bad demo example included
-- [ ] Limitation discussion included
-- [ ] Repository stays public until the semester ends
-- [ ] Submit the GitHub repository URL before the deadline
-
----
-
-## Example README result section
-
-You can paste this section directly after generating your own images:
-
-```markdown
-## Results
-
-### Good Example
-![Good Example](outputs/good_case_comparison.png)
-
-This image produces a strong cartoon effect because the subject is clearly separated from the background,
-and the major edges are preserved well.
-
-### Bad Example
-![Bad Example](outputs/bad_case_comparison.png)
-
-This image produces a weaker cartoon effect because the scene has many fine textures and complicated background details,
-which create too many unnecessary edges.
-```
-
----
-
-## Notes
-
-- The homework deadline in the slides is **March 24, 2026, 23:59**. fileciteturn0file0
-- The submission is the **GitHub repository URL**. fileciteturn0file0
-- The grading is an ON/OFF checklist based on whether the required conditions are satisfied. fileciteturn0file0
-
