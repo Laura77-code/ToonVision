@@ -39,7 +39,7 @@ ToonVision/
 │   ├── harry.webp
 │   ├── input.jpeg
 │   └── superman.webp
-└── outputs/
+└── outputs_default/
 ```
 
 ---
@@ -110,19 +110,19 @@ The algorithm's appearance can be drastically changed by adjusting the command-l
 
 ### **Side-by-Side Comparison**
 
-| Subject | Default Results | Stronger Effects (Bolder & Flatter) |
+| Subject | Default Results | Bold Comic Effects (Bolder & Flatter) |
 | :--- | :--- | :--- |
-| **Harry Potter** | ![Default](outputs/harry_comparison.png) | ![Strong](outputs_strong/harry_comparison.png) |
-| **Superman** | ![Default](outputs/superman_comparison.png) | ![Strong](outputs_strong/superman_comparison.png) |
-| **Busy Landscape**| ![Default](outputs/input_comparison.png) | ![Strong](outputs_strong/input_comparison.png) |
-| **Kitten (Low Light)**| ![Default](outputs/cat_comparison.png) | ![Strong](outputs_strong/cat_comparison.png) |
+| **Harry Potter** | ![Default](outputs_default/harry_comparison.png) | ![Strong](outputs_bold_comic/harry_comparison.png) |
+| **Superman** | ![Default](outputs_default/superman_comparison.png) | ![Strong](outputs_bold_comic/superman_comparison.png) |
+| **Busy Landscape**| ![Default](outputs_default/input_comparison.png) | ![Strong](outputs_bold_comic/input_comparison.png) |
+| **Kitten (Low Light)**| ![Default](outputs_default/cat_comparison.png) | ![Strong](outputs_bold_comic/cat_comparison.png) |
 
-### **Analysis of Strong Effects**
+### **Analysis of Bold Comic Effects**
 Using the command below, we can achieve a much more stylized "comic book" aesthetic:
 
 ```bash
 python cartoon_stylizer.py Inputs/ \
-  --output-dir outputs_strong \
+  --output-dir outputs_bold_comic \
   --adaptive-block-size 11 \
   --adaptive-c 7 \
   --bilateral-sigma-color 220 \
@@ -138,17 +138,17 @@ The image of the kitten is our most difficult case due to low light and noise. H
 
 | Strategy | Result | Analysis |
 | :--- | :--- | :--- |
-| **1. Default** | ![Default](outputs/cat_comparison.png) | **Failure**: The contrast is too low for default settings. The edge map is blank, and the result is just a blurry, pixelated photo. |
-| **2. Ultra-Sensitive** | ![Ultra](outputs_kitten_ultra/cat_comparison.png) | **Improvement**: By using a negative `adaptive-c` and small `block-size`, we force the detection of whiskers and eyes. However, it introduces "pepper noise" (fine black dots). |
-| **3. Masterpiece** | ![Masterpiece](outputs_kitten_masterpiece/cat_comparison.png) | **Best for Kitten**: Using a larger `median-ksize (7)` and `bilateral-sigma (300)`, we clean the noise first. This creates a smooth, painterly look that works beautifully for this specific photo. |
+| **1. Default** | ![Default](outputs_default/cat_comparison.png) | **Failure**: The contrast is too low for default settings. The edge map is blank. |
+| **2. Ultra-Sensitive** | ![Ultra](outputs_ultra_sensitive/cat_comparison.png) | **Improvement**: Forces detection of whiskers and eyes using negative `adaptive-c`. |
+| **3. Painterly Smooth** | ![Painterly](outputs_painterly_smooth/cat_comparison.png) | **Best for Kitten**: Heavy cleaning of noise creates a clean, artistic illustration. |
 
 #### **The Parameter Trade-off (Visual Comparison)**
 It is important to note that **there is no "one-size-fits-all" command**. A configuration that fixes a noisy image might degrade a high-quality one.
 
-| Subject | Default (Ideal) | Masterpiece (Over-smoothed) |
+| Subject | Default (Ideal) | Painterly Smooth (Over-smoothed) |
 | :--- | :--- | :--- |
-| **Harry Potter** | ![Default](outputs/harry_comparison.png) | ![Masterpiece](outputs_strong/harry_comparison.png) |
-| **Analysis** | Sharp edges, clear facial details, and balanced colors. | **Issue**: The high `median-ksize (7)` and `bilateral-sigma (300)` blur out the fine details of the face and wand. The image loses its "comic book" definition and starts looking like a blurry painting. |
+| **Harry Potter** | ![Default](outputs_default/harry_comparison.png) | ![Masterpiece](outputs_bold_comic/harry_comparison.png) |
+| **Analysis** | Sharp edges, clear facial details, and balanced colors. | **Issue**: The high `median-ksize (7)` and `bilateral-sigma (300)` blur out the fine details of the face and wand. |
 
 - **Conclusion**: Classical Computer Vision requires parameter tuning based on the specific characteristics (lighting, noise, detail) of the input image. Low-light photos (Kitten) need heavy smoothing, while high-quality portraits (Harry) need sharper edge detection.
 
